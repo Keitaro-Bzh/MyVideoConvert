@@ -1,0 +1,167 @@
+#/bin/bash
+
+parametreUser="$1"
+
+fnMsgErreurQuitter() {
+echo "Appuyer sur Entree pour quitter..."
+read
+exit
+}
+
+fnAnalyseParametre() {
+	if [ ! -e "$parametreUser" ]
+	then
+		echo "Le chemin specifie n'existe pas"
+		fnMsgErreurQuitter
+	elif [ -d "$parametreUser" ]
+	then
+		fnRoutineVideo "dossier"
+	elif [ -f "$parametreUser" ]
+	then
+		longueur=$((${#fichierVideo}-4))
+		extension=${parametreUser:$longueur}
+		case $extension in
+		".rar") unrar e "$parametreUser"
+			;;
+		esac
+		fnRoutineVideo "rar" 
+	fi
+}
+
+fnRoutineVideo() {
+	if [ ! -z "$1" ]; then
+		case "$1" in
+		"dossier") longueur=$((${#fichierVideo}-1))
+			extension=${fichierVideo:$longueur}
+			if [ "$extension" = "/" ]; then
+				dossier="$parametreUser"
+			else
+				dossier="$parametreUser/"
+			fi
+			;;
+		"rar") dossier="./"
+			;;
+		*) if [ `dirname "$parametreUser"` = "./"]; then
+				dossier="./"
+			else
+				dossier="`dirname "$parametreUser"`/"
+			fi
+			;;
+		esac
+	else
+		dossier="`dirname "$parametreUser"`/"
+	fi
+	
+	listeFichier=`find "$dossier" -iregex '.*\(avi\|mkv\)' -printf '%f\n'`
+	nbFichier=`find "$dossier" -iregex '.*\(avi\|mkv\)' -printf '%f\n' | wc -l`
+	for fichierVideo in $listeFichier
+	do
+		fichierChemin=$dossier$fichierVideo
+		longueur=$((${#fichierVideo}-4))
+		extension=${fichierVideo:$longueur}
+		case $extension in
+			.mkv) mkvmerge -i ${fichierChemin} > .testMKV
+				nbPisteAC3=`more .testMKV | grep A_AC3 | wc -l`
+				retourAC3=$nbPisteAC3
+				pisteDTS=`more .testMKV | grep A_DTS | sed -n '1p'`
+				retourDTS=${pisteDTS:14:1}
+			        if [ $retourAC3 -gt 0 ]; then
+					 if [ $nbFichier -gt 1 ]; then
+						# Dans le cas d'un deplacement d'une serie par exemple
+						# on va definir dans la cible le nom du dossier destinataire
+						# et copier le fichier sur le meme nom
+						mv "$fichierChemin" "$cible/$fichierVideo"
+				     	else
+						mv "$fichierChemin" "$cible"
+				     	fi
+					echo "$fichierChemin traite avec succes"
+				else
+					mkvextract tracks "$fichierChemin" $retourDTS:audio.dts
+					ffmpeg -threads 4 -i audio.dts -acodec ac3 -ab 640k -y audio.ac3
+					if [ $nbFichier -gt 1 ]; then
+						mkvmerge -o "$cible/$fichierVideo" -A --compression -1:none "$fichierChemin"  --compression -1:none --language -1:fre audio.ac3
+					else
+						mkvmerge -o "$cible" -A --compression -1:none "$fichierChemin"  --compression -1:none --language -1:fre audio.ac3
+					fi	
+					echo "$fichierChemin traite avec succes"
+					# On supprime les fichiers temporaires	
+					rm "$fichierChemin"
+					rm audio*
+				fi
+				rm .testMKV
+				;;
+			.avi) mv "$fichierChemin" "$cible/$fichierVideo"
+				echo "$fichierChemin traite avec succes"
+				;;
+			*)echo "Aucun fichier video trouve"
+				fnMsgErreurQuitter
+				;;
+		esac
+	done
+}
+
+# On va d'abord verifier que le dossier dans lequel se trouve les fichiers a decompresser est correct
+if [ ! -z "$1" ]
+then
+	# Declaration des variables
+	clear
+	echo '======================================='
+	echo 'Definition des variables de destination'
+	echo '======================================='
+	echo 'Choix du dossier de destination'
+	echo '-------------------------------'
+	echo '1- Dossier Film'
+	echo '2- Dossier Enfants'
+	echo '3- Dossier Series'
+	echo '4- Dossier Mangas'
+	echo '5- Quitter'
+	read -p 'Votre Choix :' choixDest
+	case $choixDest in
+		"1") dossierDest="/home/pi/hdd_usb/Videos/Films/"
+			;;
+		"2") dossierDest="/home/pi/hdd_usb/Videos/Enfants/"
+			;;
+		"3") dossierDest="/home/pi/hdd_usb/Videos/Series/"
+			;;
+		"4") dossierDest="/home/pi/hdd_usb/Videos/Mangas/"
+			;;
+		"5") clear
+			exit
+			;;
+		*) echo "Erreur dans la selection, le fichier sera sauvegarder dans /home/pi/hdd_usb/Videos"
+			dossierDest="/home/pi/hdd_usb/Videos"
+			;;
+	esac
+	read -p 'Nom de fichier final (exemple:Star Wars, Avengers/Thor, Prison Break/S4): ' fichierDest
+	if [ -d "$1" ]; then			# On verifie s'il s'agit d'un dossier ou pas
+		cible=$dossierDest$fichierDest
+	else
+		cible=$dossierDest$fichierDest.mkv
+	fi
+	if [ ! -d $dossierDest ]; then
+		echo "Le dossier n'existe pas, nous allons le creer (Ctrl+C pour annuler)"
+		echo "Appuyer sur entree pour continuer ..."
+		read
+		mkdir -p $dossierDest
+	fi
+	clear
+	echo "********************************************************************************"
+	echo "Chemin complet (Ctrl+C pour annuler) : $cible "
+	echo "Appuyez sur une touche pour continuer..."
+	echo "********************************************************************************"
+	read
+	
+	fnAnalyseParametre 				# On va regarder si le fichier est un/pls fichier(s) video(s) ou un fichier a decompresser et agir en consequence
+
+	# on nettoye le dossier	
+	if [ -d "$1" ]
+	then
+		rm -r "$1"
+	fi
+else
+	clear	
+	echo 'Merci de saisir le nom du premier fichier .rar a decompresser, un fichier video ou un dossier contenant des fichiers videos a deplacer'
+	echo 'Appuyer sur Entree pour quitter ...'
+	exit
+fi
+
