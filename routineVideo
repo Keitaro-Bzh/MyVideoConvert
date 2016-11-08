@@ -5,29 +5,15 @@ parametreUser="$1"
 fnMsgErreurQuitter() {
 echo "Appuyer sur Entree pour quitter..."
 read
+clear
 exit
 }
-
-fnAnalyseParametre() {
-	if [ ! -e "$parametreUser" ]
-	then
-		echo "Le chemin specifie n'existe pas"
-		fnMsgErreurQuitter
-	elif [ -d "$parametreUser" ]
-	then
-		fnRoutineVideo "dossier"
-	elif [ -f "$parametreUser" ]
-	then
-		longueur=$((${#fichierVideo}-4))
-		extension=${parametreUser:$longueur}
-		case $extension in
-		".rar") unrar e "$parametreUser"
-			;;
-		esac
-		fnRoutineVideo "rar" 
-	fi
+fnMsgAfficheCible() {
+	echo "********************************************************************************"
+	echo "Chemin complet (Ctrl+C pour annuler) : $1 "
+	echo "Appuyez sur une touche pour continuer..."
+	echo "********************************************************************************"
 }
-
 fnRoutineVideo() {
 	if [ ! -z "$1" ]; then
 		case "$1" in
@@ -100,63 +86,79 @@ fnRoutineVideo() {
 	done
 }
 
-# On va d'abord verifier que le dossier dans lequel se trouve les fichiers a decompresser est correct
-if [ ! -z "$1" ]
-then
-	# Declaration des variables
-	clear
-	echo '======================================='
-	echo 'Definition des variables de destination'
-	echo '======================================='
-	echo 'Choix du dossier de destination'
-	echo '-------------------------------'
-	echo '1- Dossier Film'
-	echo '2- Dossier Enfants'
-	echo '3- Dossier Series'
-	echo '4- Dossier Mangas'
-	echo '5- Quitter'
-	read -p 'Votre Choix :' choixDest
-	case $choixDest in
-		"1") dossierDest="/home/pi/hdd_usb/Videos/Films/"
-			;;
-		"2") dossierDest="/home/pi/hdd_usb/Videos/Enfants/"
-			;;
-		"3") dossierDest="/home/pi/hdd_usb/Videos/Series/"
-			;;
-		"4") dossierDest="/home/pi/hdd_usb/Videos/Mangas/"
-			;;
-		"5") clear
-			exit
-			;;
-		*) echo "Erreur dans la selection, le fichier sera sauvegarder dans /home/pi/hdd_usb/Videos"
-			dossierDest="/home/pi/hdd_usb/Videos"
-			;;
-	esac
-	read -p 'Nom de fichier final (exemple:Star Wars, Avengers/Thor, Prison Break/S4): ' fichierDest
-	if [ -d "$1" ]; then			# On verifie s'il s'agit d'un dossier ou pas
-		cible=$dossierDest$fichierDest
-	else
-		cible=$dossierDest$fichierDest.mkv
-	fi
-	if [ ! -d $dossierDest ]; then
-		echo "Le dossier n'existe pas, nous allons le creer (Ctrl+C pour annuler)"
-		echo "Appuyer sur entree pour continuer ..."
-		read
-		mkdir -p $dossierDest
-	fi
-	clear
-	echo "********************************************************************************"
-	echo "Chemin complet (Ctrl+C pour annuler) : $cible "
-	echo "Appuyez sur une touche pour continuer..."
-	echo "********************************************************************************"
-	read
-	
-	fnAnalyseParametre 				# On va regarder si le fichier est un/pls fichier(s) video(s) ou un fichier a decompresser et agir en consequence
+# ---------------------------------------------------------
+# ---------------------------------------------------------
+#
+#   Début du script MyVideoConverter
+#
+# ---------------------------------------------------------
+# ---------------------------------------------------------
 
-	# on nettoye le dossier	
-	if [ -d "$1" ]
-	then
-		rm -r "$1"
+if [ ! -z "$1" ]; then					# On commence par vérifier si un paramètre a été renseigné
+	if [ ! -e "$1" ]; 	then			# On va vérifier ensuite que le fichier existe bien
+		clear
+		echo '======================================='
+		echo 'Definition des variables de destination'
+		echo '======================================='
+		echo 'Choix du dossier de destination'
+		echo '-------------------------------'
+		echo '1- Dossier Film'			# J'affiche le menu correspondant à ma liste ci-dessous
+		echo '2- Dossier Enfants'
+		echo '3- Dossier Series'
+		echo '4- Dossier Mangas'
+		echo '0- Quitter'
+		read -p 'Votre Choix :' choixDest
+		case $choixDest in				# Je liste ici les dossiers de destination
+			"1") dossierDest="/home/pi/hdd_usb/Videos/Films/"
+				;;
+			"2") dossierDest="/home/pi/hdd_usb/Videos/Enfants/"
+				;;
+			"3") dossierDest="/home/pi/hdd_usb/Videos/Series/"
+				;;
+			"4") dossierDest="/home/pi/hdd_usb/Videos/Mangas/"
+				;;
+			"0") clear
+				exit
+				;;
+			*) echo "Erreur dans la selection, le fichier sera sauvegarder dans /home/pi/hdd_usb/Videos"
+				dossierDest="/home/pi/hdd_usb/Videos"
+				;;
+		esac
+		if [ -d "$1" ]; then			# On verifie s'il s'agit d'un dossier ou pas
+			read -p 'Nom de dossier de destination(exemple:Star Wars Trilogie, Prison Break/S4): ' complementDossierDest
+			cible=$dossierDest$complementDossierDest
+			if [ ! -d $complementDossierDest ]; then
+				fnMsgAfficheCible $cible
+				echo "Le dossier n'existe pas, nous allons le creer (Ctrl+C pour annuler)"
+				echo "Appuyer sur entree pour continuer ..."
+				read
+				mkdir -p $dossierDest
+			elif
+				fnMsgAfficheCible $cible	
+			fi
+			fnRoutineVideo "dossier"
+		elif [ -f "$1" ]
+			then
+				read -p 'Nom de fichier de destination(exemple:Star Wars, Avengers/Thor): ' complementDossierDest
+				cible=$dossierDest$fichierDest.mkv
+				fnMsgAfficheCible $cible
+				longueur=$((${#1}-4))
+				extension=${$1:$longueur}
+				case $extension in
+					".rar") unrar e "$1"
+						;;
+				esac
+				fnRoutineVideo "rar" 
+			fi
+		fi
+		clear
+			
+		if [ -d "$1" ]; then 		# on nettoye le dossier	
+			rm -r "$1"
+		fi
+
+		echo "Le chemin specifie n'existe pas"
+		fnMsgErreurQuitter
 	fi
 else
 	clear	
