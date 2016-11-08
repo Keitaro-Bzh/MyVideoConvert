@@ -121,7 +121,7 @@ if [ ! -z "$1" ]; then					# On commence par vérifier si un paramètre a été 
 				exit
 				;;
 			*) echo "Erreur dans la selection, le fichier sera sauvegarder dans /home/pi/hdd_usb/Videos"
-				dossierDest="/home/pi/hdd_usb/Videos"
+				dossierDest="/home/pi/hdd_usb/Videos/"
 				;;
 		esac
 		if [ -d "$1" ]; then			# On verifie s'il s'agit d'un dossier ou pas
@@ -132,8 +132,8 @@ if [ ! -z "$1" ]; then					# On commence par vérifier si un paramètre a été 
 				echo "Le dossier n'existe pas, nous allons le creer (Ctrl+C pour annuler)"
 				echo "Appuyer sur entree pour continuer ..."
 				read
-				mkdir -p $dossierDest
-			elif
+				mkdir -p $complementDossierDest
+			else
 				fnMsgAfficheCible $cible	
 			fi
 			fnRoutineVideo "dossier"
