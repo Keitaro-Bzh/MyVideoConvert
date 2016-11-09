@@ -60,7 +60,7 @@ fnRoutineVideo() {
 				     	else
 						mv "$fichierChemin" "$cible"
 				     	fi
-					echo "$fichierChemin traite avec succes"
+					echo "$fichierVideo traite avec succes"
 				else
 					mkvextract tracks "$fichierChemin" $retourDTS:audio.dts
 					ffmpeg -threads 4 -i audio.dts -acodec ac3 -ab 640k -y audio.ac3
@@ -69,7 +69,7 @@ fnRoutineVideo() {
 					else
 						mkvmerge -o "$cible" -A --compression -1:none "$fichierChemin"  --compression -1:none --language -1:fre audio.ac3
 					fi	
-					echo "$fichierChemin traite avec succes"
+					echo "$fichierVideo traite avec succes"
 					# On supprime les fichiers temporaires	
 					rm "$fichierChemin"
 					rm audio*
@@ -95,7 +95,7 @@ fnRoutineVideo() {
 # ---------------------------------------------------------
 
 if [ ! -z "$1" ]; then					# On commence par vérifier si un paramètre a été renseigné
-	if [ ! -e "$1" ]; 	then			# On va vérifier ensuite que le fichier existe bien
+	if [ -e "$1" ]; 	then			# On va vérifier ensuite que le fichier existe bien
 		clear
 		echo '======================================='
 		echo 'Definition des variables de destination'
@@ -127,36 +127,35 @@ if [ ! -z "$1" ]; then					# On commence par vérifier si un paramètre a été 
 		if [ -d "$1" ]; then			# On verifie s'il s'agit d'un dossier ou pas
 			read -p 'Nom de dossier de destination(exemple:Star Wars Trilogie, Prison Break/S4): ' complementDossierDest
 			cible=$dossierDest$complementDossierDest
-			if [ ! -d $complementDossierDest ]; then
-				fnMsgAfficheCible $cible
+			if [ ! -d "$cible" ]; then
+				fnMsgAfficheCible "$cible"
 				echo "Le dossier n'existe pas, nous allons le creer (Ctrl+C pour annuler)"
 				echo "Appuyer sur entree pour continuer ..."
 				read
-				mkdir -p $complementDossierDest
+				mkdir -p "$cible"
 			else
-				fnMsgAfficheCible $cible	
+				fnMsgAfficheCible "$cible"	
 			fi
 			fnRoutineVideo "dossier"
-		elif [ -f "$1" ]
-			then
-				read -p 'Nom de fichier de destination(exemple:Star Wars, Avengers/Thor): ' complementDossierDest
-				cible=$dossierDest$fichierDest.mkv
-				fnMsgAfficheCible $cible
-				longueur=$((${#1}-4))
-				extension=${$1:$longueur}
-				case $extension in
-					".rar") unrar e "$1"
-						;;
-				esac
-				fnRoutineVideo "rar" 
-			fi
+		elif [ -f "$1" ]; then
+			read -p 'Nom de fichier de destination(exemple:Star Wars, Avengers/Thor): ' complementDossierDest
+			cible=$dossierDest$fichierDest.mkv
+			fnMsgAfficheCible $cible
+			longueur=$((${#1}-4))
+			extension=${$1:$longueur}
+			case $extension in
+				".rar") unrar e "$1"
+					;;
+			esac
+			fnRoutineVideo "rar" 
+		else
+			echo "y'a une couille dans le pate"
 		fi
-		clear
-			
+		clear		
 		if [ -d "$1" ]; then 		# on nettoye le dossier	
 			rm -r "$1"
 		fi
-
+	else
 		echo "Le chemin specifie n'existe pas"
 		fnMsgErreurQuitter
 	fi
