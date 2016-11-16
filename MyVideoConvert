@@ -9,6 +9,7 @@ clear
 exit
 }
 fnMsgAfficheCible() {
+	clear
 	echo "********************************************************************************"
 	echo "Chemin complet (Ctrl+C pour annuler) : $1 "
 	echo "Appuyez sur une touche pour continuer..."
@@ -38,19 +39,19 @@ fnRoutineVideo() {
 		dossier="`dirname "$parametreUser"`/"
 	fi
 	
-	listeFichier=`find "$dossier" -iregex '.*\(avi\|mkv\)' -printf '%f\n'`
-	nbFichier=`find "$dossier" -iregex '.*\(avi\|mkv\)' -printf '%f\n' | wc -l`
+	listeFichier=`find "$dossier" -maxdepth 1 -iregex '.*\(avi\|mkv\)' -printf '%f\n'`
+	nbFichier=`find "$dossier" -maxdepth 1 -iregex '.*\(avi\|mkv\)' -printf '%f\n' | wc -l`
 	for fichierVideo in $listeFichier
 	do
 		fichierChemin=$dossier$fichierVideo
 		longueur=$((${#fichierVideo}-4))
 		extension=${fichierVideo:$longueur}
 		case $extension in
-			.mkv) mkvmerge -i ${fichierChemin} > .testMKV
-				nbPisteAC3=`more .testMKV | grep A_AC3 | wc -l`
+			.mkv) mkvmerge -i ${fichierChemin} > .testSon
+				nbPisteAC3=`more .testSon | grep -E 'A_AC3|A_AAC' | wc -l`
 				retourAC3=$nbPisteAC3
-				pisteDTS=`more .testMKV | grep A_DTS | sed -n '1p'`
-				retourDTS=${pisteDTS:14:1}
+				pisteDTS=`more .testSon | grep A_DTS | sed -n '1p' | rev`
+				retourDTS=${pisteDTS:16:1}
 			        if [ $retourAC3 -gt 0 ]; then
 					 if [ $nbFichier -gt 1 ]; then
 						# Dans le cas d'un deplacement d'une serie par exemple
@@ -74,7 +75,7 @@ fnRoutineVideo() {
 					rm "$fichierChemin"
 					rm audio*
 				fi
-				rm .testMKV
+				rm .testSon
 				;;
 			.avi) mv "$fichierChemin" "$cible/$fichierVideo"
 				echo "$fichierChemin traite avec succes"
@@ -138,11 +139,12 @@ if [ ! -z "$1" ]; then					# On commence par vérifier si un paramètre a été 
 			fi
 			fnRoutineVideo "dossier"
 		elif [ -f "$1" ]; then
-			read -p 'Nom de fichier de destination(exemple:Star Wars, Avengers/Thor): ' complementDossierDest
+			read -p 'Nom de fichier de destination(exemple:Star Wars, Avengers/Thor,Nemo): ' fichierDest
 			cible=$dossierDest$fichierDest.mkv
-			fnMsgAfficheCible $cible
-			longueur=$((${#1}-4))
-			extension=${$1:$longueur}
+			fnMsgAfficheCible "$cible"
+			read
+			longueur=$((${#parametreUser}-4))
+			extension=${parametreUser:$longueur}
 			case $extension in
 				".rar") unrar e "$1"
 					;;
@@ -153,7 +155,12 @@ if [ ! -z "$1" ]; then					# On commence par vérifier si un paramètre a été 
 		fi
 		clear		
 		if [ -d "$1" ]; then 		# on nettoye le dossier	
-			rm -r "$1"
+			rm -R "$1"
+		else
+			leDossier=`dirname "$1"`
+			if [ "$leDossier" != "./" ]; then
+				rm -R "$leDossier"
+			fi
 		fi
 	else
 		echo "Le chemin specifie n'existe pas"
